@@ -18,6 +18,9 @@
 #include "error.h"
 #endif
 
+#define MAX_ID_LEN 32
+#define MAX_INT_LEN 12
+
 #define min(m,n) ((m) < (n) ? (m) : (n))
 #define max(m,n) ((m) > (n) ? (m) : (n))
 

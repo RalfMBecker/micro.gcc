@@ -1,2 +1,2 @@
-begin A := BB -314 + A;
-end SCAN_EOF
+BEGIN A := BB -314 + A;
+END

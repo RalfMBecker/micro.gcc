@@ -1,0 +1,6 @@
+-- toy test program
+BEGIN
+BB := 1;
+A := BB - 314; -- another comment
+C := A + 15 - BB;
+END
