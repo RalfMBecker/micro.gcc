@@ -3,4 +3,6 @@ BEGIN
 BB := 1;
 A := BB - 314; -- another comment
 C := A + 15 - BB;
+READ(A, B);
+WRITE(4 + B);
 END

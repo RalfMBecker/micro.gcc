@@ -6,6 +6,7 @@
 
 #include "compiler.h"
 #include "lexer.h"
+#include "parser.h"
 
 extern char identifierStr[];
 extern int numVal;
@@ -14,7 +15,7 @@ int
 main(int argc, char* argv[]){
 
   int fd, openFlags;
-  int token;
+	//  int token;
 
   // *** to do: error checking of argc/argv ***
   openFlags = O_RDONLY;
@@ -22,6 +23,10 @@ main(int argc, char* argv[]){
   if (fd == -1)
     errExit(1, " ...open()...");
 
+	systemGoals(fd);
+
+
+	/*
   while ( ( (token = tokenize(fd)) != -1) ){
       switch(token){
       case tok_EOF:
@@ -73,9 +78,12 @@ main(int argc, char* argv[]){
 
   puts("token = tok_EOF");
   puts("\t\tWe reached end of file; exiting.");
+	*/
+
 
   if (close(fd) == -1)      
     errExit(1, "...close()...");
+
 
   exit(EXIT_SUCCESS);
 } 

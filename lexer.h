@@ -20,12 +20,12 @@ char identifierStr[MAX_ID_LEN + 1]; // string value of identifier
 int intVal;   // value of number, if found
 
 typedef enum token_types{
-  tok_EOF = -1, tok_BEGIN , tok_END, tok_READ, tok_WRITE, tok_ID, 
-  tok_INT_LITERAL, tok_LPAREN, tok_RPAREN, tok_SEMICOLON, tok_COMMA, 
-  tok_ASSIGN, tok_OP_PLUS, tok_OP_MINUS, tok_SCAN_EOF
+  tok_EOF = -1, tok_BEGIN = -2 , tok_END = -3, tok_READ = -4, tok_WRITE = -5, 
+	tok_ID = -6, tok_INT_LITERAL = -7, tok_LPAREN = -8, tok_RPAREN = -9,
+	tok_SEMICOLON = -10, tok_COMMA = -11, tok_ASSIGN = -12, tok_OP_PLUS = -13, 
+	tok_OP_MINUS = -14, tok_SCAN_EOF = -15
 } token;
-// note: with changed logic, probably will remove tok_SCAN_EOF
 
-extern token tokenize(int);
+extern int tokenize(int);
 
 #endif

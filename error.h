@@ -3,12 +3,12 @@
 *
 **********************************************/
 
-#ifndef ERROR_H
-#define ERROR_H
+#ifndef ERROR_H_
+#define ERROR_H_
 
 #include <stdarg.h>
 
-#ifndef COMPILER_H
+#ifndef COMPILER_H_
 #include "compiler.h"
 #endif
 

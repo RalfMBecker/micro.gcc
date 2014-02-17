@@ -3,8 +3,8 @@
 *
 *************************************************************/
 
-#ifndef COMPILER_H
-#define COMPILER_H
+#ifndef COMPILER_H_
+#define COMPILER_H_
 
 #include <stdio.h>        // standard i/o functions
 #include <sys/types.h>    // type definitions
@@ -14,7 +14,7 @@
 #include <unistd.h>       // prototypes for many sys calls
 #include <errno.h>        // declare variable errno
 
-#ifndef ERROR_H
+#ifndef ERROR_H_
 #include "error.h"
 #endif
 

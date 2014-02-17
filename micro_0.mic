@@ -1,0 +1,3 @@
+-- test file using illegal token '*'
+BEGIN A := BB -314 * A;
+END

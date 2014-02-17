@@ -29,7 +29,8 @@ next_char(int fd, int* last_char){
 // return value:    -1: unspecified error
 //                   tok_ID: not a reserved keyword
 //                   tok_xxx: keyword xxx, as indexed by tok_xxx
-static token check_reserved(char* word){
+static token 
+check_reserved(char* word){
 
   if ( (strcmp(word, "BEGIN") == 0) )
     return tok_BEGIN;
@@ -45,7 +46,8 @@ static token check_reserved(char* word){
 
 // note how last_char look-ahead invariant is preserved by each possible
 // sub case (where it is not explicitly invoked, a comment explains why)
-token tokenize(int fd){
+int 
+tokenize(int fd){
 
   static int last_char = ' ';
   int i;
@@ -95,7 +97,7 @@ token tokenize(int fd){
       errExit(1, "...atoi(%s)...",  numStr);
     //puts("...processing an integer literal...");
 
-    next_char(fd, &last_char);
+		//    next_char(fd, &last_char);
     return tok_INT_LITERAL;
   }
 
@@ -125,7 +127,7 @@ token tokenize(int fd){
   if (last_char == '-'){
     next_char(fd, &last_char);
     if (last_char == '-'){ // the look-ahead check already re-fille last_char
-      puts("...processing a comment...");
+			//      puts("...processing a comment...");
       while ( (last_char != '\n') && (last_char != EOF) )
 	next_char(fd, &last_char);
       if ( (last_char == '\n') )
