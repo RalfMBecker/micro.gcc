@@ -15,7 +15,7 @@ struct nlist* symbolTable[HASHSIZE];
 
 // start out by making them all available (except 0 == doesn't exist)
 static void
-availableInit(void){
+regFreeInit(void){
 
 	int i;
 	regFree[0][0] = regFree[0][1] = 0;
@@ -67,7 +67,7 @@ deAllocateRegister(char* name){
 void 
 createSymbolTable(void){
 
-	availableInit();
+	regFreeInit();
 
 	int i;
 	for (i = 0; i < HASHSIZE; i++) 
