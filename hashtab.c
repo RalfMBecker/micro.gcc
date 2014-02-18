@@ -2,28 +2,34 @@
 * hashtab.c -          hash table for use in symbol table
 * Language:            Micro
 *
-**************************************************************
-* Usage: 
-*         install(test, "1");
-*         struct nlist* p; p = lookup("name");
-*                          p= undef("name");
-*         don't forget to initialize table:
-*         for (i = 0; i < HASHSIZE; i++) (hashtab[i] = NULL);
-*************************************************************/
+**************************************************************/
 
 #include "hashtab.h"
 
-struct nlist{
-  struct nlist* next;
-  char* name;
-  char* defn;
-};
+static unsigned 
+hash(char* s){
 
-unsigned hash(char*);
-struct nlist* findprior(char*);
-char* mystrdup(char*);
+  unsigned hashval;
 
-struct nlist* findprior(char* s){
+  for (hashval = 0; *s != '\0'; s++)
+    hashval = *s + 31*hashval;
+
+  return hashval%HASHSIZE;
+}
+
+static char* 
+mystrdup(char* s){
+
+  char* p;
+
+  p = (char*) malloc(strlen(s)+1);
+  if (p != NULL)
+    strcpy(p, s);
+  return p;
+}
+
+static struct nlist* 
+findprior(struct nlist** hashtab, char* s){
 
   struct nlist* np;
   struct nlist* np_prior;
@@ -37,7 +43,8 @@ struct nlist* findprior(char* s){
   return np_prior;
 }
 
-struct nlist* lookup(char* s){
+struct nlist* 
+lookup(struct nlist** hashtab, char* s){
 
   struct nlist* np;
 
@@ -50,15 +57,16 @@ struct nlist* lookup(char* s){
 
 // in linked list rooted at hash(name), find nlist* of same hash value, 
 // if any, preceding the name to be undefined; then re-link properly
-int undef(char* name){
+int 
+undef(struct nlist** hashtab, char* name){
 
   struct nlist* p;
   struct nlist* p_prior;
 
-  p = lookup(name);
+  p = lookup(hashtab, name);
   if (p == NULL)
     return -1;
-  p_prior = findprior(name);
+  p_prior = findprior(hashtab, name);
 
   if (!(p_prior == p))
     p_prior->next = p->next;
@@ -71,12 +79,13 @@ int undef(char* name){
   return 0;
 }
 
-struct nlist* install(char* name, char* defn){
+struct nlist* 
+install(struct nlist** hashtab, char* name, char* defn){
 
   struct nlist* np;
   unsigned hashval;
 
-  if ( (np = lookup(name)) == NULL){
+  if ( (np = lookup(hashtab, name)) == NULL){
     np = (struct nlist*) malloc(sizeof(struct nlist));
     if (np == NULL || (np->name = mystrdup(name)) == NULL)
       return NULL;
@@ -92,22 +101,13 @@ struct nlist* install(char* name, char* defn){
     return np;
 }
 
-unsigned hash(char* s){
+void
+printHashTable(struct nlist** hashtab){
 
-  unsigned hashval;
+	struct nlist* np;
+	int i;
 
-  for (hashval = 0; *s != '\0'; s++)
-    hashval = *s + 31*hashval;
-
-  return hashval%HASHSIZE;
-}
-
-char* mystrdup(char* s){
-
-  char* p;
-
-  p = (char*) malloc(strlen(s)+1);
-  if (p != NULL)
-    strcpy(p, s);
-  return p;
+	for (i = 0; i< HASHSIZE; i++)
+		for (np = hashtab[i]; np!= NULL; np = np->next)
+			printf("%s = %s\n", hashtab[i]->name, hashtab[i]->defn);
 }

@@ -9,9 +9,10 @@
 
 #include "compiler.h"
 
-// extern int curTok; // check if needed
+extern int curTok;
 
-int systemGoals(int);
-
+void Statement(int fd, int readToken);
+int match(int, int, token);
+int getNextToken(int);
 
 #endif

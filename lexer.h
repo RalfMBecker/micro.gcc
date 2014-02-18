@@ -7,9 +7,6 @@
 #ifndef LEXER_H_
 #define LEXER_H_
 
-#include <ctype.h>
-#include <fcntl.h>        // open(), O_RDONLY
-
 #ifndef COMPILER_H
 #include "compiler.h"
 #endif

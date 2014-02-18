@@ -7,12 +7,14 @@
 #define COMPILER_H_
 
 #include <stdio.h>        // standard i/o functions
-#include <sys/types.h>    // type definitions
+#include <ctype.h>
 #include <stdlib.h>       // commonly used lib functions, plus
                           // EXIT_SUCCESS and EXIT_FAILURE
 #include <string.h>      // string-handling
+#include <sys/types.h>    // type definitions
 #include <unistd.h>       // prototypes for many sys calls
 #include <errno.h>        // declare variable errno
+#include <fcntl.h>        // open(), O_RDONLY
 
 #ifndef ERROR_H_
 #include "error.h"
