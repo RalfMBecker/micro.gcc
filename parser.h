@@ -12,7 +12,7 @@
 extern int curTok;
 
 void Statement(int fd, int readToken);
-int match(int, int, token);
+int match(int update, int fd, token, int readAhead);
 int getNextToken(int);
 
 #endif

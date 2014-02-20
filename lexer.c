@@ -32,14 +32,18 @@ next_char(int fd, int* last_char){
 static token 
 check_reserved(char* word){
 
-  if ( (strcmp(word, "BEGIN") == 0) )
+  if ( (0 == strcmp(word, "begin")) )
     return tok_BEGIN;
-  if ( (strcmp(word, "END") == 0) )
+  if ( (0 == strcmp(word, "end")) )
     return tok_END;
-  if ( (strcmp(word, "READ") == 0) )
+  if ( (0 == strcmp(word, "read")) )
     return tok_READ;
-  if ( (strcmp(word, "WRITE") == 0) )
+  if ( (0 == strcmp(word, "write")) )
     return tok_WRITE;
+	if ( (0 == strcmp(word, "int")) )
+		return tok_DEC_INT;
+	if ( (0 == strcmp(word, "float")) )
+		return tok_DEC_FLT;
 
   return tok_ID; // not a reserved keyword (tok_xxx is numbered 1 and higher)
 }

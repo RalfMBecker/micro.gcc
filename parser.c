@@ -6,6 +6,8 @@
 
 #include "lexer.h"
 #include "error.h"
+#include "ast.h"
+#include "codegen.h"
 
 int curTok;
 
@@ -16,15 +18,20 @@ int curTok;
 int
 getNextToken(int fd){ return (curTok = tokenize(fd)); }
 
-// update = 0: curTok needs no updating
+// update = 0: curTok needs no updating before processing
 //        = 1: curTok needs updating
+// readAhead = 0: after the above, do not further forward curTok
+//           = 1:      "         , do getNextToken() again
 int
-match(int update, int fd, token tok){
+match(int update, int fd, token tok, int readAhead){
 
-	if (update) {curTok = getNextToken(fd);} 
+	if (update) getNextToken(fd); 
 
-  if ( (tok == curTok) )
+  if ( (tok == curTok) ) {
+		if (readAhead) getNextToken(fd);
+
 		return 0;
+	}
 
 	errExit(0, "syntax error - invalid token, or token invalid in context");
 	return -1; // to suppress gcc warning
@@ -36,9 +43,8 @@ match(int update, int fd, token tok){
 //       need to begin by updating curTok
 //**********************************************************
 
-//void Program(int);
-//void statementList(int);
 void Statement(int, int);
+void declaration(int, char*);
 void Expression(int, int);
 void expressionList(int, int);
 void idList(int, int);
@@ -51,50 +57,8 @@ void Primary(int, int);
 //    statement-list -> statement [statement]*
 
 
-/*
-int
-systemGoals(int fd){
-
-	Program(fd);
-	return match(1, fd, tok_EOF);
-}
-
-void
-Program(int fd){
-
-	match(1, fd, tok_BEGIN);
-	statementList(fd);
-	match(0, fd, tok_END); // when we return, statement list has read one ahead
-	puts("successfully processed a program");
-}
-*/
-
-
-/*
-void
-statementList(int fd){
-
-	puts("\tchecking for statement-list");
-
-	getNextToken(fd); // validity check in Statement()
-	Statement(fd);
-	for(;;){
-		switch( getNextToken(fd) ){
-		case tok_ID:
-		case tok_READ:
-		case tok_WRITE:
-			Statement(fd);
-			break;
-		default: return;
-		}
-	}
-	puts("\tsuccessfully processed a statement-list");
-
-}
-*/
-
-
-// statement -> ID := expression;
+// statement -> declaration
+//              ID := expession;  // ID must be first declared
 //              read( id-list);
 //              write( expr-list);
 //
@@ -107,43 +71,101 @@ Statement(int fd, int readToken){
 	puts("checking for statement");
 
 	switch(curTok){
+
+	case tok_DEC_INT:
+		declaration(fd, "int");
+		break;
+	case tok_DEC_FLT:
+		declaration(fd, "flt");
+		break;
+
 	case tok_ID: 
+		if ( (NULL == lookup(symbolTable, identifierStr) ) )
+			errExit(0, "cannot assign to undeclared identifier (%s)", identifierStr);
 		printf("  successfully processed a LHS(statment): ID - %s\n", 
 					 identifierStr);
-		match(1, fd, tok_ASSIGN);
+		match(1, fd, tok_ASSIGN, 0);
 		puts("  found primary: ASSIGN");
-		// getNextToken(fd);
 		Expression(fd, 1); /// CONFIRM
-		match(0, fd, tok_SEMICOLON); // relocate 3 instances of this check
+		match(0, fd, tok_SEMICOLON, 0); // relocate 3 instances of this check
 		        // after the switch when done with debugging
 		puts("  found primary: SEMICOLON");
 		break;
+
 	case tok_READ:
 		puts("  successfully processed a function-statment: READ");
-		match(1, fd, tok_LPAREN);
+		match(1, fd, tok_LPAREN, 0);
 		puts("  found primary: LPAREN");
-		//		match(1, fd, tok_ID);
-		// printf("\tmatched one ID - %s\n", identifierStr);
 		idList(fd, 0); 
-		match(0, fd, tok_RPAREN);  // upon returning, idList looks ahead
+		match(0, fd, tok_RPAREN, 0);  // upon returning, idList looks ahead
 		puts("  found primary: RPAREN");
-		match(1, fd, tok_SEMICOLON);
+		match(1, fd, tok_SEMICOLON, 0);
 		puts("  found primary: SEMICOLON");
 		break;
+
 	case tok_WRITE:
 		puts("  successfully processed a function-statment: WRITE");
-		match(1, fd, tok_LPAREN);
+		match(1, fd, tok_LPAREN, 0);
 		puts("  found primary: LPAREN");
 		expressionList(fd, 0); /// CONFIRM
-		match(0, fd, tok_RPAREN);  // see below
+		match(0, fd, tok_RPAREN, 0);  // see below
 		puts("  found primary: RPAREN");
-		match(1, fd, tok_SEMICOLON);
+		match(1, fd, tok_SEMICOLON, 0);
 		puts("  found primary: SEMICOLON");
 		break;
+
 	default: errExit(0, "illegal expression"); break;
 	} // end switch
 
 	puts("successfully matched a statement");
+}
+
+// declaration -> type id;
+//                type id = expr;
+//     (type in {int, float})
+// Note: when arriving here, type has already been found
+void
+declaration(int fd, char* type){
+
+	struct nlist* LHS_S;
+	//	exprRecord LHS, RHS;    
+
+
+	match(1, fd, tok_ID, 1); 
+
+	// if the ID is followed (illegally) by a token that overwrites
+	// identifierStr used for the ID, we store a wrong value.
+	// however, only ';' and '=' are legal, so compilation stops anyway then
+	if ( (checkID_Defined(identifierStr)) )
+		errExit(0, "attempting to re-declare identifier (%s)", identifierStr);
+
+	// recall that we read one token ahead
+	if ( (tok_SEMICOLON == curTok) || (tok_ASSIGN == curTok) )
+		LHS_S = rwSymbolTable(identifierStr, type);
+
+		if ( (NULL == LHS_S) )
+			errExit(0, "error inserting identifier %s into symbol table", 
+							identifierStr);
+
+		switch (curTok){
+
+		case tok_SEMICOLON:  // declaration case 
+			codegen_DECLARE(identifierStr, LHS_S->storage);
+			break;
+
+		case tok_ASSIGN:  // copy assignment case
+		//		RHS = Expression(fd, 1); // TO DO: fct sig
+			codegen_DECLARE(identifierStr, LHS_S->storage);
+			Expression(fd, 1);
+			codegen_ASSIGN(LHS_S->storage, "RES OF EXPRESSION");
+
+			match(0, fd, tok_SEMICOLON, 0);
+		// TO DO: perfrom binary operation; into AST
+		break;
+
+		default: errExit(0, "illegal syntax in declaration"); break;
+	}
+
 }
 
 // expression -> primary [add_op primary]*
@@ -159,7 +181,6 @@ Expression(int fd, int readToken){
 	while ( (curTok == tok_OP_PLUS)  || (curTok == tok_OP_MINUS) ){
 		printf("      successfully processed an ADD_OP: %s\n", 
 				 (curTok == tok_OP_PLUS)?"OP_PLUS":"OP_MINUS");
-		//getNextToken(fd);
 		Primary(fd, 1); // CONFIRM
 	}
 	// at this point, curTok points ahead (e.g., to a ';')
@@ -190,12 +211,13 @@ Primary(int fd, int readToken){
 	switch(curTok){
 	case tok_LPAREN:
 		puts("          found primary: LPAREN");
-		//getNextToken(fd);
 		Expression(fd, 1); /// CONFIRM
-		match(0, fd, tok_RPAREN); // Expression() reads ahead
-		getNextToken(fd);
+		match(0, fd, tok_RPAREN, 1); // Expression() reads ahead
 		break;
 	case tok_ID: 
+		// we cannot declare when we come here - done before
+		if ( !(checkID_Defined(identifierStr)) )
+			errExit(0, "illegal use of undeclared identifier (%s)", identifierStr);
 		printf("          found primary: ID - %s\n", identifierStr);
 		getNextToken(fd);
 		break;
@@ -229,11 +251,11 @@ idList(int fd, int readToken){
 
 	puts("    checking for id-list");
 
-	match(1, fd, tok_ID);
+	match(1, fd, tok_ID, 0);
 	printf("      matched one ID - %s\n", identifierStr);
 
 	while ( (tok_COMMA == getNextToken(fd)) ){
-		match(1, fd, tok_ID);
+		match(1, fd, tok_ID, 0);
 		printf("      matched one ID - %s\n", identifierStr);
 	}
 

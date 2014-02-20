@@ -12,6 +12,11 @@
 #include "parser.h"
 #include "codegen.h"
 
+
+#include "hashtab.h"
+#include "ast.h"
+
+
 extern char identifierStr[];
 extern int numVal;
 
@@ -31,8 +36,23 @@ main(int argc, char* argv[]){
 		fd = 0;
 
 	createSymbolTable();
+	/*
+	printHashTable(symbolTable);
+	rwSymbolTable("ralf", "int");
+	rwSymbolTable("ann", "float");
+	printHashTable(symbolTable);
+	if (checkID_Defined("ralf")) puts("ralf defined");
+	else puts("ralf not defined");
+	rwSymbolTable("fluff", "int");
+	rwSymbolTable("octo", "float");
+	rwSymbolTable("jl", "int");
+	rwSymbolTable("aha", "float");
+	printHashTable(symbolTable);
+	if (checkID_Defined("octo")) puts("octo defined");
+	else puts("octo not defined");
+	*/
 
-	match(1, fd, tok_BEGIN);
+	match(1, fd, tok_BEGIN, 0);
 	codegen_BEGIN(fd, (argc>1)?argv[1]:"");
 
 	while ( getNextToken(fd) != EOF){

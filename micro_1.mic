@@ -1,2 +1,4 @@
-BEGIN A := BB -314 + A;
-END
+begin 
+int A;
+A := BB -314 + A;
+end

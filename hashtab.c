@@ -7,7 +7,7 @@
 #include "hashtab.h"
 
 static unsigned 
-hash(char* s){
+hash(const char* s){
 
   unsigned hashval;
 
@@ -18,18 +18,18 @@ hash(char* s){
 }
 
 static char* 
-mystrdup(char* s){
+mystrdup(const char* s){
 
   char* p;
 
-  p = (char*) malloc(strlen(s)+1);
+  p = malloc(strlen(s)+1);
   if (p != NULL)
     strcpy(p, s);
   return p;
 }
 
 static struct nlist* 
-findprior(struct nlist** hashtab, char* s){
+findprior(struct nlist** hashtab, const char* s){
 
   struct nlist* np;
   struct nlist* np_prior;
@@ -44,7 +44,7 @@ findprior(struct nlist** hashtab, char* s){
 }
 
 struct nlist* 
-lookup(struct nlist** hashtab, char* s){
+lookup(struct nlist** hashtab, const char* s){
 
   struct nlist* np;
 
@@ -58,7 +58,7 @@ lookup(struct nlist** hashtab, char* s){
 // in linked list rooted at hash(name), find nlist* of same hash value, 
 // if any, preceding the name to be undefined; then re-link properly
 int 
-undef(struct nlist** hashtab, char* name){
+undef(struct nlist** hashtab, const char* name){
 
   struct nlist* p;
   struct nlist* p_prior;
@@ -73,17 +73,20 @@ undef(struct nlist** hashtab, char* name){
   else
     hashtab[hash(name)] = NULL;
   free ( (void*) p->name);
-  free ( (void*) p->defn);
-  free( (void*) p); // free only frees the space, doesn't undefine
+  free ( (void*) p->type);
+  free ( (void*) p->scope);
+  free ( (void*) p->storage);
 
   return 0;
 }
 
 struct nlist* 
-install(struct nlist** hashtab, char* name, char* defn){
+install(struct nlist** hashtab, char* name, char* type, 
+				char* scope, char* storage){
 
   struct nlist* np;
   unsigned hashval;
+	const char* pH = "placeholder";
 
   if ( (np = lookup(hashtab, name)) == NULL){
     np = (struct nlist*) malloc(sizeof(struct nlist));
@@ -93,12 +96,25 @@ install(struct nlist** hashtab, char* name, char* defn){
     np->next = hashtab[hashval];
     hashtab[hashval] = np;
   }
-  else
-    free( (void*) np->defn);
-  if( (np->defn = mystrdup(defn) ) == NULL)
-      return NULL;
-  else
-    return np;
+  else{
+		free ( (void*) np->type);
+		free ( (void*) np->scope);
+		free ( (void*) np->storage);
+	}
+
+	if ( NULL == type )
+		type = (char*) pH;		
+	if ( NULL == scope )
+		scope = (char*) pH;	
+	if ( NULL == storage )
+		storage = (char*) pH;	
+
+  if( (NULL == (np->type = mystrdup(type)) ) || 
+			(NULL == (np->scope = mystrdup(scope)) ) || 
+			(NULL == (np->storage = mystrdup(storage)) ) )
+		return NULL;
+
+	return np;
 }
 
 void
@@ -109,5 +125,5 @@ printHashTable(struct nlist** hashtab){
 
 	for (i = 0; i< HASHSIZE; i++)
 		for (np = hashtab[i]; np!= NULL; np = np->next)
-			printf("%s = %s\n", hashtab[i]->name, hashtab[i]->defn);
+			printf("%s = %s, %s, %s\n", np->name, np->type, np->scope, np->storage); 
 }
