@@ -81,7 +81,7 @@ undef(struct nlist** hashtab, const char* name){
 }
 
 struct nlist* 
-install(struct nlist** hashtab, char* name, char* type, 
+install(struct nlist** hashtab, char* name, int type, 
 				char* scope, char* storage){
 
   struct nlist* np;
@@ -102,19 +102,34 @@ install(struct nlist** hashtab, char* name, char* type,
 		free ( (void*) np->storage);
 	}
 
-	if ( NULL == type )
-		type = (char*) pH;		
+	if ( (INTEGER != type) && (LONG != type) && (FLOAT != type) &&
+			 (FCT_DECL != type) && (FCT_IMPL != type) )
+		type = INVALID;
 	if ( NULL == scope )
 		scope = (char*) pH;	
 	if ( NULL == storage )
 		storage = (char*) pH;	
 
-  if( (NULL == (np->type = mystrdup(type)) ) || 
-			(NULL == (np->scope = mystrdup(scope)) ) || 
+  if( (NULL == (np->scope = mystrdup(scope)) ) || 
 			(NULL == (np->storage = mystrdup(storage)) ) )
 		return NULL;
 
 	return np;
+}
+
+static char*
+charType(int type){
+
+	static char chType[MAX_ID_LEN + 1];
+
+	switch(type){
+	case INTEGER: strcpy(chType, "int"); break;
+	case LONG: strcpy(chType, "long"); break;
+	case FLOAT: strcpy(chType, "float"); break;
+	default: errExit(0, "illegal type in declaration"); break;
+	}
+
+	return chType;
 }
 
 void
@@ -122,8 +137,11 @@ printHashTable(struct nlist** hashtab){
 
 	struct nlist* np;
 	int i;
+	char chType[MAX_ID_LEN + 1];
 
 	for (i = 0; i< HASHSIZE; i++)
-		for (np = hashtab[i]; np!= NULL; np = np->next)
-			printf("%s = %s, %s, %s\n", np->name, np->type, np->scope, np->storage); 
+		for (np = hashtab[i]; np!= NULL; np = np->next){
+			strcpy(chType, charType(np->type));
+			printf("%s = %s, %s, %s\n", np->name, chType, np->scope, np->storage); 
+		}
 }

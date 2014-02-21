@@ -19,21 +19,23 @@
 #ifndef HASHTAB_H_
 #define HASHTAB_H_
 
-#include "compiler.h"
+#include "ast.h"
 
 #define HASHSIZE 101
 
-// ****TO DO: replace type: char* -> type as defined in ast.h
+// type is actually 'enum types'. To avoid 'incomplete type' error,
+// would need to put 'enum types' definition in joint header file.
+// preferred to keep in ast.h for easy access
 struct nlist{
   struct nlist* next;
   char* name;
-  char* type;
+  int type;
 	char* scope;
-	char* storage; // "int", "long", "float" (should be error-checked; is not)
+	char* storage; 
 };
 
 struct nlist* lookup(struct nlist**, const char*);
-struct nlist* install(struct nlist**, char* name, char* type, 
+struct nlist* install(struct nlist**, char* name, int type, 
 											char* scope, char* storage); 
        // send NULL if no type/scope/storage to be stored
       // placeholder if any of type, scope, storage undefined: "placeholder"

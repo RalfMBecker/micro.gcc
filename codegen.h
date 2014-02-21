@@ -16,16 +16,18 @@
 extern struct nlist* symbolTable[HASHSIZE];
 
 void createSymbolTable(void);
-struct nlist* writeSymbolTable(int exprType, char* name, char* type);
+struct nlist* writeSymbolTable(int exprType, char* name, int type);
 struct nlist* readSymbolTable(const char* name);
 
 opRecord makeOpRec(token tok);
 exprRecord makeIDRec(token tok);
+exprRecord readIDRec(token tok);
 exprRecord makeLiteralRec(token tok);
 
-void codegen_DECLARE(char* ID, char* storage);
-void codegen_ASSIGN(char* dest, char* src);
-void codegen_BEGIN(int fd, const char* name);
-void codegen_END(void);
+void codegen_DECLARE(const char* ID, int type, const char* storage);
+void codegen_ASSIGN(const char* dest, const char* src);
+void codegen_FUNCTION(const char* name);
+void codegen_END(const char*);
+void codegen_TU(int fd, const char*);
 
 #endif

@@ -3,18 +3,26 @@
 * Language:            Micro
 *
 * SSA Philosophy: whenever a new value is created, 
-* assign to a new tmp variable - eg, in intermediate 
-* steps when evaluating an expression on the RHS of an 
-* assignment. The assigment proper can go directly 
-* to the target variable (recipient). 
-* Example (one way): 
+* assign to a new tmp variable: 
+*    - in intermediate steps when evaluating an expression 
+*      on the RHS [of an assignment] because the operand
+*      types differ (the expression can be a literal), or 
+*    - when assigning LHS = RHS, converting RHS as needed
+*      (this covers the case of function template imposed
+*       conversions for the return value: int f(int);)  
+* Example: 
 * short a; long b; (assign values); float c = a + b;
 * dec a, tmp%1
 * dec b, tmp%2 (followed by assignment steps)
 * dec c, tmp%3
 * promote tmp%4, a, long
 * add tmp%5, tmp%4, tmp%2
-* assign tmp%3, tmp%5
+* promote tmp%6, tmp%5, float
+* assign tmp%3, tmp%6
+* TO DO: scope
+*        store as struct {char* TU, char* withinTU} scope
+*        if global, scope.TU = "all", scope.withinTU = "na"
+*        globals: GLOBALS [functDec | varDec]* END_GLOBALS
 ********************************************************/
 
 #include "compiler.h"
@@ -40,6 +48,7 @@ createSymbolTable(void){
 	for (i = 0; i < HASHSIZE; i++) 
 		symbolTable[i] = NULL;
 
+	// define "the usual conventions"
 	promotionPriority[1][0] = INTEGER;
 	promotionPriority[1][1] = 10;
 
@@ -67,26 +76,18 @@ assignNewTemp(){
 // Returns: pointer to node inserted 
 //          (statically allocated; caller to save)
 //          if already in table, just return pointer to existing node
-// type:    0: called by temp variable - possibly adjust exprType; no
-//             new entry
-//          1: called for ID for first time. Enter into symbol table
 // Error:   returns NULL
 struct nlist*
-writeSymbolTable(int exprType, char* name, char* type){
+writeSymbolTable(int exprType, char* name, int type){
 
 	char storage[10];
-	struct nlist* p;
 
-	if ( (1 == exprType) ){
-		if ( !( NULL == (p = lookup(symbolTable, name)) ) ) // found it
-			return p;
-		strcpy(	storage, assignNewTemp());
-	}
-
-	if ( (NULL == (p = install(symbolTable, name, type, NULL, storage)) ) )
+	if ( !( NULL == lookup(symbolTable, name)) )// found it
 		return NULL;
+	strcpy(	storage, assignNewTemp());
 
-	return p;
+	return install(symbolTable, name, type, NULL, storage);
+
 }
 
 // Returns: pointer to node if already in symbol table
@@ -125,8 +126,28 @@ makeOpRec(token tok){
 	return res;
 }
 
+// used in declarations
 exprRecord 
 makeIDRec(token tok){
+
+	exprRecord res;
+	struct nlist* pList;
+
+	// test should never fail; for safety/style
+	if ( (NULL != (pList = readSymbolTable(identifierStr)) ) )
+		errExit(0, "attempting to redefine ID (%s)", identifierStr);
+	
+	res.kind = EXPR_ID;
+	strcpy(res.name, pList->name);
+	res.type = pList->type;
+
+	return res;
+}
+
+// used in expressions: say, int A was stored in tmp%4.
+// make a tmp record tmp%4 with type int, storage tmp%4
+exprRecord 
+readIDRec(token tok){
 
 	exprRecord res;
 	struct nlist* pList;
@@ -135,12 +156,9 @@ makeIDRec(token tok){
 	if ( (NULL == (pList = readSymbolTable(identifierStr)) ) )
 		errExit(0, "attempting to access undefined ID (%s)", identifierStr);
 	
-	res.kind = EXPR_ID;
-	strcpy(res.name, pList->name);
-	if ( strcmp(pList->type, "int") ) res.type = INTEGER;
-	else if ( strcmp(pList->type, "long") ) res.type = LONG;
-	else if ( strcmp(pList->type, "float") ) res.type = FLOAT;
-	else errExit(0, "corrupted Symbol Table");	
+	res.kind = EXPR_TMP;
+	strcpy(res.name, pList->storage);
+	res.type = pList->type;
 
 	return res;
 }
@@ -170,7 +188,78 @@ makeLiteralRec(token tok){
 }
 
 /***************************************************
+* Code generation wrappers
+*
+****************************************************/
+
+void
+codegen_DECLARE(const char* ID, int type, const char* storage){
+
+	char chType[MAX_ID_LEN + 1];
+
+	switch(type){
+	case INTEGER: strcpy(chType, "int"); break;
+	case LONG: strcpy(chType, "long"); break;
+	case FLOAT: strcpy(chType, "float"); break;
+	default: errExit(0, "illegal type in declaration"); break;
+	}
+
+	printf("Declare: %s %s, %s\n", chType, ID, storage);
+}
+
+// *************CHANGE: hand on object; extract storage/type
+// *************PRINT AS: Assign: A, tmp%1 (int)
+// ********************************************************
+void
+codegen_ASSIGN(const char* dest, const char* src){
+
+	printf("Assign: %s, %s\n", dest, src);
+}
+
+static void
+codegen_CONVERT(exprRecord rec, int to){
+
+	char convType[15];
+
+	if ( (LONG == to) && (INTEGER == rec.type) )
+		strcpy(convType, "Promote");
+	else
+		strcpy(convType, "Convert");
+
+	printf("%s: %s, %s, %d\n", convType, assignNewTemp(), rec.name, to);
+}
+
+// adjust once we process args
+void 
+codegen_FUNCTION(const char* name){
+	
+	printf("Function: %s\n", name);
+	puts("----------------------------------------------");
+}
+
+void 
+codegen_END(const char* name){	
+
+	puts("----------------------------------------------");
+	printf("End function: %s\n\n", name);
+}
+
+void
+codegen_TU(int fd, const char* name){
+
+	puts("----------------------------------------------");
+	printf("code generated for %s\n", (fd)?name:"stdin");
+	puts("----------------------------------------------\n");
+}
+
+/***************************************************
+* End code generation wrappers
+*
+****************************************************/
+
+/***************************************************
 * Conversion and promotion for binary expressions
+* (infixes), assignments, and return values
 *
 ****************************************************/
 
@@ -195,51 +284,14 @@ castRecord(exprRecord old, int newType){
 
 	exprRecord res;
 
-	res.kind = EXPR_ID;
+	codegen_CONVERT(old, newType);
+
+	res.kind = EXPR_TMP;
 	res.type = newType;
-
-
-	// RETHING LOGIC: SHOULD CREATE NEW TEMP OBJECT IN ANY CASE
-	// TO DO TOMORROW
+	strcpy(res.name, assignNewTemp());
 
 	return res;
 }
-
-
-
-/*
-// Goal:      cast 'rec' to type 'target'
-// Return:    tmp var of target type
-// we need to specify 'source' type so we can refer to the
-// proper object in the union member of exprRecord
-// No distinction made between promotion and conversion
-exprRecord
-castRecordType(exprRecord rec, int source, int target){
-
-	if ( (target == rec.type) )
-		return rec;
-
-	exprRecord tmp;
-
-	tmp.type = target;
-	if ( (EXPR_ID == rec.kind) ){ // no other changes needed
-		tmp.kind = rec.kind;
-		strcpy(tmp.name, rec.name);
-		return tmp;
-	}
-	if ( (INTEGER == source) && (LONG == target) ){
-		tmp.val_long = (long) rec.val_int; return tmp; }
-	else if ( (INTEGER == source) && (FLOAT == target) ){
-		tmp.val_flt = (float) rec.val_int; return tmp; }
-	else if ( (LONG == source) && (FLOAT == target) ){
-		tmp.val_flt = (float) rec.val_long; return tmp; }
-	else
-		errExit(0, "invalid (implicit) cast requested");
-
-	return tmp; // to suppress gcc warning
-}
-*/
-
 
 /***************************************************
 * End of conversion and promotion
@@ -247,33 +299,44 @@ castRecordType(exprRecord rec, int source, int target){
 ****************************************************/
 
 /***************************************************
-* Code generation wrappers
+* Infix, Prefix, and Postfix operations
 *
 ****************************************************/
 
-void
-codegen_DECLARE(char* ID, char* storage){
+exprRecord
+generateInfix(exprRecord LHS, opRecord op, exprRecord RHS){
 
-	printf("Declare: %s, %s\n", ID, storage);
+	exprRecord res, LHS_adj, RHS_adj;
+	int t;
+
+	// casting, if needed
+	// castRecord also does IR generation, so must do first
+	if ( ( 0 == (t = checkCast(LHS, RHS)) ) )
+		res.type = LHS.type; // equal type case
+	else{
+		if ( (1 == t) ){ // convert LHS
+			RHS_adj = RHS;
+			LHS_adj = castRecord(LHS, RHS.type);
+			res.type = RHS.type;
+		}
+		else{ // t = 2
+			LHS_adj = LHS;
+			RHS_adj = castRecord(RHS, LHS.type);
+			res.type = LHS.type;
+		}
+	}
+
+	res.kind = EXPR_TMP;
+	strcpy(res.name, assignNewTemp());
+
+	// CALL CODEGENERATION codeGen("Assign", LHS_adj, op, RHS_adj);
+	return res;
 }
-// *************CHANGE: hand on object; extract storage/type
-// *************PRINT AS: Assign: A, tmp%1 (int)
 
-void
-codegen_ASSIGN(char* dest, char* src){
-
-	printf("Assign: %s, %s\n", dest, src);
-}
-
-void 
-codegen_BEGIN(int fd, const char* name){
-
-	printf("\ncode generated for %s\n", (fd)?name:"stdin");
-	puts("------------------------");
-}
-
-void codegen_END(void){	puts("Halt"); }
-
+/***************************************************
+* End Infix, Prefix, and Postfix operations
+*
+****************************************************/
 
 /***************************************************
 * re-locate what follows into interpreter

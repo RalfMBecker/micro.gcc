@@ -45,7 +45,7 @@ match(int update, int fd, token tok, int readAhead){
 //**********************************************************
 
 void Statement(int, int);
-exprRecord Declaration(int, char*);
+exprRecord Declaration(int, int);
 exprRecord Expression(int, int);
 exprRecord Primary(int, int);
 void expressionList(int, int);
@@ -74,13 +74,13 @@ Statement(int fd, int readToken){
 	switch(curTok){
 
 	case tok_DEC_INT:
-		Declaration(fd, "int");
+		Declaration(fd, INTEGER);
 		break;
 	case tok_DEC_LONG:
-		Declaration(fd, "long");
+		Declaration(fd, LONG);
 		break;
 	case tok_DEC_FLT:
-		Declaration(fd, "flt");
+		Declaration(fd, FLOAT);
 		break;
 
 	case tok_ID: 
@@ -129,7 +129,7 @@ Statement(int fd, int readToken){
 //     (type in {int, float})
 // Note: when arriving here, type has already been found
 exprRecord
-Declaration(int fd, char* type){
+Declaration(int fd, int type){
 
 	exprRecord eRec;
 	strcpy(eRec.name, "test"); eRec.type = INTEGER; eRec.kind = EXPR_ID;
@@ -155,12 +155,12 @@ Declaration(int fd, char* type){
 	switch (curTok){
 
 	case tok_SEMICOLON:  // declaration case 
-		codegen_DECLARE(identifierStr, LHS_S->storage);
+		codegen_DECLARE(identifierStr, type, LHS_S->storage);
 		break;
 
 	case tok_ASSIGN:  // copy assignment case
 		//		RHS = Expression(fd, 1); // TO DO: fct sig
-		codegen_DECLARE(identifierStr, LHS_S->storage);
+		codegen_DECLARE(identifierStr, type, LHS_S->storage);
 		Expression(fd, 1);
 		codegen_ASSIGN(LHS_S->storage, "RES OF EXPRESSION");
 
@@ -225,7 +225,7 @@ Primary(int fd, int readToken){
 	switch(curTok){
 	case tok_LPAREN:
 		puts("          found primary: LPAREN");
-		Expression(fd, 1); /// CONFIRM
+		Expression(fd, 1); 
 		match(0, fd, tok_RPAREN, 1); // Expression() reads ahead
 		break;
 	case tok_ID: 

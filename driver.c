@@ -47,8 +47,11 @@ main(int argc, char* argv[]){
 	else puts("octo not defined");
 	*/
 
+	codegen_TU(fd, (argc >1)?argv[1]:"");
+
+	// needs to be redone when doing scope
 	match(1, fd, tok_BEGIN, 0);
-	codegen_BEGIN(fd, (argc>1)?argv[1]:"");
+	codegen_FUNCTION("begin");
 
 	while ( getNextToken(fd) != EOF){
 		if ( (curTok == tok_END) ) { endSeen = 1; break;}
@@ -58,7 +61,7 @@ main(int argc, char* argv[]){
 	}
 
 	if (endSeen)  // make sure we saw END before EOF
-		codegen_END();
+		codegen_END("begin");
 	else
 		errExit(0, "syntax error: program must end with token END");
 
