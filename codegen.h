@@ -9,14 +9,19 @@
 
 #include "hashtab.h"
 #include "ast.h"
+#include "lexer.h"
 
 #define NUMREGS 12 // relocate to interpreter
 
 extern struct nlist* symbolTable[HASHSIZE];
 
 void createSymbolTable(void);
-struct nlist* rwSymbolTable(char* name, char* type);
-int checkID_Defined(const char* name);
+struct nlist* writeSymbolTable(int exprType, char* name, char* type);
+struct nlist* readSymbolTable(const char* name);
+
+opRecord makeOpRec(token tok);
+exprRecord makeIDRec(token tok);
+exprRecord makeLiteralRec(token tok);
 
 void codegen_DECLARE(char* ID, char* storage);
 void codegen_ASSIGN(char* dest, char* src);

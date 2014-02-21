@@ -23,12 +23,13 @@
 
 #define HASHSIZE 101
 
+// ****TO DO: replace type: char* -> type as defined in ast.h
 struct nlist{
   struct nlist* next;
   char* name;
   char* type;
 	char* scope;
-	char* storage;
+	char* storage; // "int", "long", "float" (should be error-checked; is not)
 };
 
 struct nlist* lookup(struct nlist**, const char*);

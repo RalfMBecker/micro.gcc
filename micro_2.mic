@@ -1,8 +1,10 @@
 -- toy test program
 begin
-int BB := 1;
+float BB := 1.0;
 int A := BB - 314; -- another comment
 int C := A + 15 - BB;
+
+long B;
 read(A, B);
 write(4 + B);
 end

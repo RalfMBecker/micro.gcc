@@ -41,14 +41,15 @@ match(int update, int fd, token tok, int readAhead){
 // recursive descent
 // Note: except for where explicitly pointed out, routines
 //       need to begin by updating curTok
+// Note2: as to return type, see comment in ast.h
 //**********************************************************
 
 void Statement(int, int);
-void declaration(int, char*);
-void Expression(int, int);
+exprRecord Declaration(int, char*);
+exprRecord Expression(int, int);
+exprRecord Primary(int, int);
 void expressionList(int, int);
 void idList(int, int);
-void Primary(int, int);
 
 // Not implemented in parser.c - handled mostly in logical structure
 // of driver.c:
@@ -73,10 +74,13 @@ Statement(int fd, int readToken){
 	switch(curTok){
 
 	case tok_DEC_INT:
-		declaration(fd, "int");
+		Declaration(fd, "int");
+		break;
+	case tok_DEC_LONG:
+		Declaration(fd, "long");
 		break;
 	case tok_DEC_FLT:
-		declaration(fd, "flt");
+		Declaration(fd, "flt");
 		break;
 
 	case tok_ID: 
@@ -124,56 +128,61 @@ Statement(int fd, int readToken){
 //                type id = expr;
 //     (type in {int, float})
 // Note: when arriving here, type has already been found
-void
-declaration(int fd, char* type){
+exprRecord
+Declaration(int fd, char* type){
+
+	exprRecord eRec;
+	strcpy(eRec.name, "test"); eRec.type = INTEGER; eRec.kind = EXPR_ID;
 
 	struct nlist* LHS_S;
 	//	exprRecord LHS, RHS;    
 
-
-	match(1, fd, tok_ID, 1); 
+	match(1, fd, tok_ID, 1);
 
 	// if the ID is followed (illegally) by a token that overwrites
 	// identifierStr used for the ID, we store a wrong value.
 	// however, only ';' and '=' are legal, so compilation stops anyway then
-	if ( (checkID_Defined(identifierStr)) )
+	if ( (NULL != readSymbolTable(identifierStr)) )
 		errExit(0, "attempting to re-declare identifier (%s)", identifierStr);
 
 	// recall that we read one token ahead
 	if ( (tok_SEMICOLON == curTok) || (tok_ASSIGN == curTok) )
-		LHS_S = rwSymbolTable(identifierStr, type);
-
-		if ( (NULL == LHS_S) )
+		LHS_S = writeSymbolTable(1, identifierStr, type);
+	if ( (NULL == LHS_S) )
 			errExit(0, "error inserting identifier %s into symbol table", 
 							identifierStr);
 
-		switch (curTok){
+	switch (curTok){
 
-		case tok_SEMICOLON:  // declaration case 
-			codegen_DECLARE(identifierStr, LHS_S->storage);
-			break;
-
-		case tok_ASSIGN:  // copy assignment case
-		//		RHS = Expression(fd, 1); // TO DO: fct sig
-			codegen_DECLARE(identifierStr, LHS_S->storage);
-			Expression(fd, 1);
-			codegen_ASSIGN(LHS_S->storage, "RES OF EXPRESSION");
-
-			match(0, fd, tok_SEMICOLON, 0);
-		// TO DO: perfrom binary operation; into AST
+	case tok_SEMICOLON:  // declaration case 
+		codegen_DECLARE(identifierStr, LHS_S->storage);
 		break;
 
-		default: errExit(0, "illegal syntax in declaration"); break;
+	case tok_ASSIGN:  // copy assignment case
+		//		RHS = Expression(fd, 1); // TO DO: fct sig
+		codegen_DECLARE(identifierStr, LHS_S->storage);
+		Expression(fd, 1);
+		codegen_ASSIGN(LHS_S->storage, "RES OF EXPRESSION");
+
+		match(0, fd, tok_SEMICOLON, 0);
+		// TO DO: perfrom binary operation; into AST to hand on as return
+		break;
+
+	default: errExit(0, "illegal syntax in declaration"); break;
 	}
 
+	return eRec;
 }
 
 // expression -> primary [add_op primary]*
 //
 // Note:     fall through to get token
 // Note:     upon return, curTok points 1 ahead
-void
+exprRecord
 Expression(int fd, int readToken){
+
+	exprRecord eRec;
+	strcpy(eRec.name, "test"); eRec.type = INTEGER; eRec.kind = EXPR_ID;
 
 	puts("    checking for expression");
 
@@ -186,6 +195,8 @@ Expression(int fd, int readToken){
 	// at this point, curTok points ahead (e.g., to a ';')
 
 	puts("    successfully matched an expression");
+
+	return eRec;
 }
 
 // NOTE: as currently drafter, we do not need OP_ADD/OP_MIN
@@ -195,14 +206,17 @@ Expression(int fd, int readToken){
 //
 
 // primary -> ( expression )
-//
+//            -[INT_LITERAL|LONG_LITERAL|FLT_LITERAL] (TO DO)
 //            ID
-//            INT_LITERAL
+//            INT_LITERAL | LONG_LITERAL | FLT_LITERAL
 //            OP_PLUS
 //            OP_MINUS
 // Note: fct returns with curTok pointing 1 ahead
-void
+exprRecord
 Primary(int fd, int readToken){
+
+	exprRecord eRec;
+	strcpy(eRec.name, "test"); eRec.type = INTEGER; eRec.kind = EXPR_ID;
 
 	puts("        checking for primary");
 
@@ -216,19 +230,30 @@ Primary(int fd, int readToken){
 		break;
 	case tok_ID: 
 		// we cannot declare when we come here - done before
-		if ( !(checkID_Defined(identifierStr)) )
+		if ( (NULL == readSymbolTable(identifierStr)) )
 			errExit(0, "illegal use of undeclared identifier (%s)", identifierStr);
 		printf("          found primary: ID - %s\n", identifierStr);
 		getNextToken(fd);
 		break;
 	case tok_INT_LITERAL: 
-		printf("          found primary: INT_LITERAL - %d\n", intVal);
+		printf("          found primary: INT_LITERAL - %ld\n", intVal);
 		getNextToken(fd);
 		break;
+	case tok_FLT_LITERAL: 
+		printf("          found primary: FLT_LITERAL - %g\n", fltVal);
+		getNextToken(fd);
+		break;
+		/*	case tok_OP_MINUS:
+		puts("          found primary: unary MINUS");
+		getNextToken(fd);
+		break;
+		*/
 	default: errExit(0, "invalid primary"); break;
 	}
 
 	puts("        successfully processed a primary");
+
+	return eRec;
 }
 
 //*************************************************************

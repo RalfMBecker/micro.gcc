@@ -1,4 +1,5 @@
 begin 
 int A;
-A := BB -314 + A;
+float BB;
+A := BB -314 * A;
 end

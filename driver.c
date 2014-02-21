@@ -12,11 +12,6 @@
 #include "parser.h"
 #include "codegen.h"
 
-
-#include "hashtab.h"
-#include "ast.h"
-
-
 extern char identifierStr[];
 extern int numVal;
 

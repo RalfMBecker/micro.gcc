@@ -21,7 +21,8 @@
 #endif
 
 #define MAX_ID_LEN 32
-#define MAX_INT_LEN 12
+#define MAX_LIT_LEN 20
+#define MAX_TYPES 10
 
 #define min(m,n) ((m) < (n) ? (m) : (n))
 #define max(m,n) ((m) > (n) ? (m) : (n))

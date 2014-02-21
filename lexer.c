@@ -42,6 +42,8 @@ check_reserved(char* word){
     return tok_WRITE;
 	if ( (0 == strcmp(word, "int")) )
 		return tok_DEC_INT;
+	if ( (0 == strcmp(word, "long")) )
+		return tok_DEC_LONG;
 	if ( (0 == strcmp(word, "float")) )
 		return tok_DEC_FLT;
 
@@ -55,7 +57,7 @@ tokenize(int fd){
 
   static int last_char = ' ';
   int i;
-  char numStr[MAX_INT_LEN+1];
+  char numStr[MAX_LIT_LEN+1];
 
   while (isspace(last_char))
     next_char(fd, &last_char);
@@ -81,29 +83,53 @@ tokenize(int fd){
     return check_reserved(identifierStr);
   }
 
-  // integer literal (recall: only valid numerical type)
+  // numeric literal
   i = 0;
   if ( isdigit(last_char) ){
     while ( isdigit(last_char) ){
-      if ( (MAX_INT_LEN == i) ){
-	numStr[0] = '\0'; // clean up
-	errExit(0, "...invalid number of digits of int type: %d (%d allowed)",
-		i, MAX_INT_LEN);
+      if ( (MAX_LIT_LEN == i) ){
+				numStr[0] = '\0'; // clean up
+				errExit(0, "...invalid number of digits of int type: %d (%d allowed)", 
+								i, MAX_LIT_LEN);
       }
       numStr[i++] = last_char;
       next_char(fd, &last_char);
     }
-    numStr[i] = '\0';
-      
-    errno = 0;   // as 0 can be returned legitimetely
-    intVal = atoi(numStr);
-    if (errno != 0) // overflow? 
-      errExit(1, "...atoi(%s)...",  numStr);
-    //puts("...processing an integer literal...");
 
-		//    next_char(fd, &last_char);
-    return tok_INT_LITERAL;
-  }
+		// case: int or long. default to int; handle promotion elsewhere
+		if ( '.' != last_char){
+			numStr[i] = '\0';
+      
+			errno = 0;   // as 0 can be returned legitimetely
+			intVal = atol(numStr);
+			if (errno != 0) // overflow? 
+				errExit(1, "...atoi(%s)...",  numStr);
+
+			return tok_INT_LITERAL;
+		}
+
+		// case: float
+		numStr[i++] = last_char;
+		next_char(fd, &last_char);
+
+    while ( isdigit(last_char) ){
+      if ( (MAX_LIT_LEN == i) ){
+				numStr[0] = '\0'; // clean up
+				errExit(0, "...invalid number of digits of int type: %d (%d allowed)", 
+								i, MAX_LIT_LEN);
+      }
+      numStr[i++] = last_char;
+      next_char(fd, &last_char);
+    }
+
+		numStr[i] = '\0';
+		errno = 0;   // as 0 can be returned legitimetely
+		fltVal = atof(numStr);
+		if (errno != 0) // overflow? 
+			errExit(1, "...atoi(%s)...",  numStr);
+
+		return tok_FLT_LITERAL;
+	} //end case numeric literal
 
   // assignment
   if ( (':' == last_char) ){
