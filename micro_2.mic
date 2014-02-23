@@ -5,6 +5,6 @@ int A := BB - 314; -- another comment
 int C := A + 15 - BB;
 
 long B;
-read(A, B);
-write(4 + B);
+-- read(A, B); 
+-- write(4 + B); 
 end

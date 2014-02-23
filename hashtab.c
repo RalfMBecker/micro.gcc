@@ -110,6 +110,7 @@ install(struct nlist** hashtab, char* name, int type,
 	if ( NULL == storage )
 		storage = (char*) pH;	
 
+	np->type = type;
   if( (NULL == (np->scope = mystrdup(scope)) ) || 
 			(NULL == (np->storage = mystrdup(storage)) ) )
 		return NULL;
