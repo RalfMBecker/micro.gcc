@@ -1,0 +1,9 @@
+begin
+
+int a := 1;
+float b := 2;
+
+long c := ((4*a +(a - b)) - 8.0*a);
+c := a - 7;
+
+end
