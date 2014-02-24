@@ -31,21 +31,6 @@ main(int argc, char* argv[]){
 		fd = 0;
 
 	createSymbolTable();
-	/*
-	printHashTable(symbolTable);
-	rwSymbolTable("ralf", "int");
-	rwSymbolTable("ann", "float");
-	printHashTable(symbolTable);
-	if (checkID_Defined("ralf")) puts("ralf defined");
-	else puts("ralf not defined");
-	rwSymbolTable("fluff", "int");
-	rwSymbolTable("octo", "float");
-	rwSymbolTable("jl", "int");
-	rwSymbolTable("aha", "float");
-	printHashTable(symbolTable);
-	if (checkID_Defined("octo")) puts("octo defined");
-	else puts("octo not defined");
-	*/
 
 	codegen_TU(fd, (argc >1)?argv[1]:"");
 

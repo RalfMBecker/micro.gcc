@@ -39,9 +39,7 @@ match(int update, int fd, token tok, int readAhead){
 
 //**********************************************************
 // recursive descent
-// Note: except for where explicitly pointed out, routines
-//       need to begin by updating curTok
-// Note2: as to return type, see comment in ast.h
+//
 //**********************************************************
 
 void Statement(int, int);
@@ -55,8 +53,22 @@ void idList(int, int);
 // of driver.c:
 //    system goal -> program EOF
 //    program -> BEGIN statement-list END
-//    statement-list -> statement [statement]*
+//    statement-list -> statement [statement]* (add back for functions)
 
+
+// type:  0 - assign; 1 - copy assignment
+static void
+castAndAssign(const exprRecord LHS, const exprRecord RHS, int type){
+
+	exprRecord tmpRecord;
+
+	if ( (0 != checkCast(LHS, RHS)) ){  // cast RHS to type assigned to
+		tmpRecord = castRecord(RHS, LHS.type);
+		codegen_ASSIGN(LHS, tmpRecord, type);
+	}
+	else// LHS.type = RHS.type
+		codegen_ASSIGN(LHS, RHS, type);
+}
 
 // statement -> declaration
 //              ID := expession;  // ID must be first declared
@@ -68,6 +80,9 @@ void idList(int, int);
 // Note:   function leaves 'clean', pointing to last processed token
 void
 Statement(int fd, int readToken){
+
+	exprRecord LHS, RHS;
+	struct nlist* pNL;
 
 	switch(curTok){
 
@@ -81,13 +96,21 @@ Statement(int fd, int readToken){
 		Declaration(fd, FLOAT);
 		break;
 
-	case tok_ID: 
-		if ( (NULL == lookup(symbolTable, identifierStr) ) )
+		// UNDO CHANGE ++++++++ MAKE FAKE TMP 
+	case tok_ID: // note: ID found has already been entered into the ast
+		           // and ST with a call to makeIDRec when first encountered
+		if ( (NULL == (pNL = lookup(symbolTable, identifierStr)) ) )
 			errExit(0, "cannot assign to undeclared identifier (%s)", identifierStr);
+
+		// create a fake TMP object to handle processing more elegantly
+		strcpy(LHS.name, pNL->storage); 
+		LHS.kind = EXPR_TMP;
+		LHS.type = pNL->type;
+
 		match(1, fd, tok_ASSIGN, 0);
-		Expression(fd, 1); 
-		match(0, fd, tok_SEMICOLON, 0); // relocate 3 instances of this check
-		        // after the switch when done with debugging
+		RHS = Expression(fd, 1); 
+		castAndAssign(LHS, RHS, 0);
+		match(0, fd, tok_SEMICOLON, 0);
 		break;
 
 	case tok_READ:
@@ -119,31 +142,28 @@ Statement(int fd, int readToken){
 
 // declaration -> type id;
 //                type id = expr;
-//     (type in {int, float})
+//     (type in {int, long, float})
 // Note: when arriving here, type has already been found
 exprRecord
 Declaration(int fd, int type){
 
-	exprRecord LHS, RHS, tmpRecord;
+	exprRecord LHS, RHS;
 	struct nlist* LHS_S;
 	char tmpScope[15];
 	strcpy(tmpScope, "placeholder");
 
 	match(1, fd, tok_ID, 1);
 
-	// if the ID is followed (illegally) by a token that overwrites
-	// identifierStr used for the ID, we store a wrong value.
-	// however, only ';' and '=' are legal, so we stop after the next step
 	if ( (NULL != readSymbolTable(identifierStr) ) )
 		errExit(0, "attempting to re-declare identifier (%s)", identifierStr);
 
 	// recall that we read one token ahead
-	if ( (tok_SEMICOLON == curTok) || (tok_ASSIGN == curTok) )
-		LHS_S = writeSymbolTable(EXPR_ID, identifierStr, type, tmpScope);
+	if ( !( (tok_SEMICOLON == curTok) || (tok_ASSIGN == curTok) ) )
+		errExit(0, "invalid symbol after declaration (%d)", curTok);
 
+	LHS_S = writeSymbolTable(EXPR_ID, identifierStr, type, tmpScope);
 	if ( (NULL == LHS_S) )
-			errExit(0, "error inserting identifier %s into symbol table", 
-							identifierStr);
+		errExit(0, "error inserting %s into symbol table", identifierStr);
 
 	LHS = makeIDRec(identifierStr);
 	codegen_DECLARE(LHS);
@@ -153,12 +173,7 @@ Declaration(int fd, int type){
 		break;
 	case tok_ASSIGN:  // copy assignment case
 		RHS = Expression(fd, 1);
-		if ( (0 != checkCast(LHS, RHS)) ){  // cast RHS to type assigned to
-			tmpRecord = castRecord(RHS, LHS.type);
-			codegen_ASSIGN(LHS, tmpRecord);
-		}
-		else // LHS.type = RHS.type
-			codegen_ASSIGN(LHS, RHS);
+		castAndAssign(LHS, RHS, 1);
 		match(0, fd, tok_SEMICOLON, 0);
 		break;
 	default: errExit(0, "illegal syntax in declaration"); break;
@@ -211,7 +226,6 @@ Primary(int fd, int readToken){
 		// we cannot declare when we come here - done before
 		if ( (NULL == readSymbolTable(identifierStr)) )
 			errExit(0, "illegal use of undeclared identifier (%s)", identifierStr);
-
 		ret = makeIDRec(identifierStr);
 		getNextToken(fd);
 		break;

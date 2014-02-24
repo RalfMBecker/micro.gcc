@@ -11,7 +11,7 @@
 *      (this covers the case of function template imposed
 *       conversions for the return value: int f(int);)  
 * Example: 
-* short a; long b; (assign values); float c = a + b;
+* int a; long b; (assign values); float c = a + b;
 * dec a, tmp%1
 * dec b, tmp%2 (followed by assignment steps)
 * dec c, tmp%3
@@ -33,17 +33,16 @@
 *
 ****************************************************/
 
-// associative array <id> <-> storage location
+// associative array <name> <-> <type> <scope> <storage> 
 struct nlist* symbolTable[HASHSIZE];
 
-// promotiona and conversion priority
+// promotion and conversion priority
 static int promotionPriority[MAX_TYPES][2];
 
 // also intiializes the table holding promotion priority
 void 
 createSymbolTable(void){
 
-	// regFreeInit(); // goes into interpreter (?)
 	int i;
 	for (i = 0; i < HASHSIZE; i++) 
 		symbolTable[i] = NULL;
@@ -60,7 +59,7 @@ createSymbolTable(void){
 
 }
 
-// static allocation of storage so can be safely accessed from caller
+// static allocation of storage so caller can safely access
 static char*
 assignNewTemp(){
 
@@ -75,14 +74,13 @@ assignNewTemp(){
 
 // Returns: pointer to node inserted 
 //          (statically allocated; caller to save)
-//          if already in table, just return pointer to existing node
-// Error:   returns NULL
+// Error:   returns NULL (attempt to redefine variable/function)
 struct nlist*
 writeSymbolTable(int exprType, char* name, int type, char* scope){
 
-	char storage[10];
+	char storage[MAGIC];
 
-	if ( !( NULL == lookup(symbolTable, name)) )// found it
+	if ( !( NULL == lookup(symbolTable, name)) ) // can't redefine 
 		return NULL;
 	strcpy(	storage, assignNewTemp());
 
@@ -93,7 +91,7 @@ writeSymbolTable(int exprType, char* name, int type, char* scope){
 // Error:   returns NULL
 // Comment: mere wrapper
 //          need separately as 'write' version needs type,
-//          which for mere read is unknown
+//          which for mere read might be unknown
 struct nlist*
 readSymbolTable(const char* name){
 
@@ -118,21 +116,20 @@ makeOpRec(token tok){
 		res.op = MINUS;
 		break;
 	default: 
-		errExit(0, "invalid token handed on for processing as operation");
+		errExit(0, "invalid token in binary expression");
 		break;
 	}
 
 	return res;
 }
 
-// used in declarations. name needed already in identifierStr
+// used in declarations
 exprRecord 
 makeIDRec(const char* name){
 
 	exprRecord res;
 	struct nlist* pList;
 
-	// test should never fail; for safety/style
 	if ( (NULL == (pList = readSymbolTable(name)) ) )
 		errExit(0, "attempting to access undeclared ID (%s)", identifierStr);
 
@@ -143,6 +140,7 @@ makeIDRec(const char* name){
 	return res;
 }
 
+// assumes call when intVal/fltVal contains the literal
 exprRecord 
 makeLiteralRec(token tok){
 
@@ -175,7 +173,7 @@ makeLiteralRec(token tok){
 void
 codegen_DECLARE(const exprRecord rec){
 
-	char typeStr[MAX_TOK_LEN];
+	char typeStr[MAX_TOK_LEN], commandStr[MAGIC];
   struct nlist* recNL;
 	int t;
 
@@ -191,35 +189,10 @@ codegen_DECLARE(const exprRecord rec){
 	else
 		errExit(0, "in ST, invalid type entry (%d) for ID (%s)", t, rec.name);  
 
-	printf("Declare: %s, %s, %s\n", rec.name, recNL->storage, typeStr);
+	sprintf(commandStr, "%s", "Declare:");
+	printf("%-8s %s, %s, %s\n", commandStr, rec.name, recNL->storage, typeStr);
 }
 
-
-// **************TO DO: pretty up as for codegen_INFIX *************
-// ******************************************************************
-// LHS should be be EXPR_ID; RHS could be anything
-void
-codegen_ASSIGN(const exprRecord LHS, const exprRecord RHS){
-
-	struct nlist *LHS_NL, *RHS_NL;
-	if ( (NULL == (LHS_NL = readSymbolTable(LHS.name)) ) )
-		errExit(0, "cannot find name in Symboql Table (%s)", LHS_NL->name);
-
-	if ( (EXPR_INT_LITERAL == RHS.kind) || (EXPR_LONG_LITERAL == RHS.kind) )
-		printf("Assign: %s, %ld\n", LHS_NL->storage, RHS.val_int);
-	else if ( (EXPR_FLT_LITERAL == RHS.kind) )
-		printf("Assign: %s, %g\n", LHS_NL->storage, RHS.val_flt);
-	else if ( (EXPR_ID == RHS.kind) ){
-		if ( (NULL == (RHS_NL = readSymbolTable(RHS.name)) ) )
-			errExit(0, "cannot find name in Symboql Table (%s)", LHS_NL->name);
-		printf("Assign: %s, %s\n", LHS_NL->name, RHS_NL->name);
-	}
-	else if ( (EXPR_TMP == RHS.kind) ) // name == storage location
-		printf("Assign: %s, %s\n", LHS_NL->storage, RHS.name);
-	else
-		errExit(0, "invalid assignment to %s", LHS_NL->name);
-
-}
 
 static char*
 storageFromName(const char* name){
@@ -232,13 +205,43 @@ storageFromName(const char* name){
 	return pNL->storage;
 }
 
+// int kind: 0 - assignment; 1 - copy assignment
+// LHS should be be a fake tmpExpr (0) (name == storage), or EXPR_ID (1) 
+// RHS could be anything
+void
+codegen_ASSIGN(const exprRecord LHS, const exprRecord RHS, int kind){
+
+	char strL[MAGIC], strR[MAGIC], commandStr[MAGIC];
+
+	if ( (0 == kind) )
+		strcpy(strL, LHS.name);
+	else if ( (1 == kind) )
+		strcpy(strL, storageFromName(LHS.name));
+	else
+		errExit(0, "invalid call of codegen_Assign (type = %d)", kind);
+
+	if ( (EXPR_INT_LITERAL == RHS.kind) || (EXPR_LONG_LITERAL == RHS.kind) )
+		sprintf(strR, "%ld", RHS.val_int);
+	else if ( (EXPR_FLT_LITERAL == RHS.kind) )
+		sprintf(strR, "%g", RHS.val_flt);
+	else if ( (EXPR_ID == RHS.kind) )
+		sprintf(strR, "%s", storageFromName(RHS.name));
+	else if ( (EXPR_TMP == RHS.kind) ) // name == storage location
+		sprintf(strR, "%s", RHS.name);
+	else
+		errExit(0, "invalid assignment");
+
+	sprintf(commandStr, "%s", "Assign:");
+	printf("%-8s %s, %s\n", commandStr, strL, strR);
+}
+
 // res will be EXPR_TMP (name == storage); LHS/RHS could be anything
 static void
 codegen_INFIX(const exprRecord res, const exprRecord LHS, 
 							const opRecord op, const exprRecord RHS){
 
 	// should be max MAX_LIT_LEN and MAX_ID_LEN
-	char opStr[15], strL[MAX_ID_LEN +1], strR[MAX_ID_LEN + 1];
+	char opStr[MAGIC], strL[MAGIC], strR[MAGIC];
 	int tL, tR;
 
 	if ( (PLUS == op.op) ) 
@@ -248,7 +251,7 @@ codegen_INFIX(const exprRecord res, const exprRecord LHS,
 	else
 		errExit(0, "illegal operation in infix expression");
 
-	// prepare what to print depending on expr type of RHS and LHS
+	// prepare what to print depending on expr type of LHS and RHS
 	if ( (EXPR_ID == (tL = LHS.kind)) )
 		strcpy(strL, storageFromName(LHS.name));
 	else if ( (EXPR_TMP == tL) )
@@ -272,7 +275,7 @@ codegen_INFIX(const exprRecord res, const exprRecord LHS,
 		errExit(0, "invalid type (%d)", tR);
 
 	// for res, name == storage
-	printf("%s %s, %s, %s\n", opStr, res.name, strL, strR);		
+	printf("%-8s %s, %s, %s\n", opStr, res.name, strL, strR);		
 }
 
 static char*
@@ -294,25 +297,28 @@ typeToStr(int type){
 static void
 codegen_CONVERT(const exprRecord dest, const exprRecord from, int to){
 
-	char convType[15], typeStr[MAX_TOK_LEN + 1];
+	char convType[MAGIC], typeStr[MAX_TOK_LEN + 1], fromStr[MAGIC];
 	int t;
 
 	if ( (LONG == to) && (INTEGER == from.type) )
-		strcpy(convType, "Promote");
+		strcpy(convType, "Promote:");
 	else
-		strcpy(convType, "Convert");
+		strcpy(convType, "Convert:");
 
 	strcpy(typeStr, typeToStr(to));
 
-	if ( (EXPR_ID == (t = from.kind) ) || (EXPR_TMP == t) )
-		printf("%s: %s, %s, %s\n", convType, dest.name, from.name, typeStr);
+	if ( (EXPR_ID == (t = from.kind) ) )
+		sprintf(fromStr, "%s", storageFromName(from.name));
+	else if ( (EXPR_TMP == t) )
+		sprintf(fromStr, "%s", from.name); // name == storage for tmp
 	else if ( (EXPR_INT_LITERAL == t) || (EXPR_LONG_LITERAL == t) )
-		printf("%s: %s, %ld, %s\n", convType, dest.name, from.val_int, typeStr);
+		sprintf(fromStr, "%ld", from.val_int);
 	else if ( (EXPR_FLT_LITERAL == t) )
-		printf("%s: %s, %g, %s\n", convType, dest.name, from.val_flt, typeStr);
+		sprintf(fromStr, "%g", from.val_flt);
 	else
 		errExit(0, "in conversion, invalid expression type (%d)", from.kind);
 
+	printf("%-8s %s, %s, %s\n", convType, dest.name, fromStr, typeStr);
 }
 
 // adjust once we process args

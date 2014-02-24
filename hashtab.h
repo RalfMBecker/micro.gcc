@@ -37,8 +37,6 @@ struct nlist{
 struct nlist* lookup(struct nlist**, const char*);
 struct nlist* install(struct nlist**, char* name, int type, 
 											char* scope, char* storage); 
-       // send NULL if no type/scope/storage to be stored
-      // placeholder if any of type, scope, storage undefined: "placeholder"
 int undef(struct nlist**, const char*);
 void printHashTable(struct nlist**);
 

@@ -21,7 +21,6 @@ struct nlist* readSymbolTable(const char* name);
 
 opRecord makeOpRec(token tok);
 exprRecord makeIDRec(const char* name);
-//exprRecord readIDRec(token tok);
 exprRecord makeLiteralRec(token tok);
 exprRecord generateInfix(const exprRecord LHS, 
 												 const opRecord op, const exprRecord RHS);
@@ -30,7 +29,8 @@ int checkCast(const exprRecord LHS, const exprRecord RHS);
 exprRecord castRecord(const exprRecord rec, int to);
 
 void codegen_DECLARE(const exprRecord);
-void codegen_ASSIGN(const exprRecord LHS, const exprRecord RHS);
+// kind: 0 - assignment (name == storage); 1 - copy assignment
+void codegen_ASSIGN(const exprRecord LHS, const exprRecord RHS, int kind);
 void codegen_FUNCTION(const char* name);
 void codegen_END(const char*);
 void codegen_TU(int fd, const char*);

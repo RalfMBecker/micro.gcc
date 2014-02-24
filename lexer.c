@@ -2,11 +2,9 @@
 * lexer.c -            lexer part of compiler
 * Language:            Micro
 *
-* Note:                - for Micro, 1 char look-ahead is enough
-*                      - Micro code ungetc(); we look ahead
-*                        and store our look-ahead in last_char
-*                      - max size identifiers: 32 bytes
-*                      - max digits int: 12 (I imposed)
+* Note:                - so far, we are LL(1), and curTok will do
+*                      - max size identifiers: MAX_ID_LEN (32)
+*                      - max digits literals: MAX_LIT_LEN (20)
 ****************************************************************/
 
 #include "compiler.h"
@@ -68,18 +66,16 @@ tokenize(int fd){
   if ( isalpha(last_char) ){
     while ( isalnum(last_char) || ('_' == last_char) ){
       if ( (MAX_ID_LEN == i) ){
-	identifierStr[0] = '\0'; // keep in clean slate
-	errExit(0, "...invalid lenght of identifier: %d (%d allowed)...", 
-		i, MAX_ID_LEN);
+				identifierStr[0] = '\0'; // keep in clean slate
+				errExit(0, "...invalid lenght of identifier: %d (%d allowed)...", 
+								i, MAX_ID_LEN);
       }
       identifierStr[i++] = last_char;
       next_char(fd, &last_char);
     }
     identifierStr[i] = '\0'; // note: last_char already looks ahead as we
                              //       read one char ahead
-    //puts("...processing an identifier/reserved key word...");
 
-    //    next_char(fd, &last_char);
     return check_reserved(identifierStr);
   }
 
@@ -135,7 +131,6 @@ tokenize(int fd){
   if ( (':' == last_char) ){
     next_char(fd, &last_char);
     if ( ('=' == last_char) ){
-      //puts("...processing an assignment...");
       next_char(fd, &last_char);
       return tok_ASSIGN;
     }
@@ -150,18 +145,19 @@ tokenize(int fd){
   case ';': next_char(fd, &last_char); return tok_SEMICOLON; break;
   case ',': next_char(fd, &last_char); return tok_COMMA; break;
   case '+': next_char(fd, &last_char); return tok_OP_PLUS; break;
-  
+  case '*': next_char(fd, &last_char); return tok_OP_MUL; break;
+  case '/': next_char(fd, &last_char); return tok_OP_DIV; break;	
+	default: break;
   }
 
   // case comment and op_minus
   if (last_char == '-'){
     next_char(fd, &last_char);
     if (last_char == '-'){ // the look-ahead check already re-fille last_char
-			//      puts("...processing a comment...");
       while ( (last_char != '\n') && (last_char != EOF) )
-	next_char(fd, &last_char);
+				next_char(fd, &last_char);
       if ( (last_char == '\n') )
-	return tokenize(fd);
+				return tokenize(fd);
     }
     else // see above comment: look-ahead invariant in last_char already ok
       return tok_OP_MINUS; 

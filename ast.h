@@ -4,8 +4,8 @@
 *
 ****************************************************************
 * Note:  as we can't use inheritance (->C++), we assign
-*        an "exprRecord" for all types of results. We'd prefer
-*        to have a hierarchy: primRec -> exprRecord, or so.
+*        an "exprRecord" for all types of results, with the usual
+*        work-around of having a 'kind' enumeration.
 ***************************************************************/
 
 #ifndef AST_H_
@@ -31,13 +31,13 @@ enum types{ INVALID = 0,
  
 // Note that, for the IR, we need not worry about loss of precision
 // for numerical types/values, so we need just one integer type and
-// one floating type.
+// one floating type that is large enough for all such types.
 typedef struct expression {
 	enum expr kind;
 	union {
 		stringID name;  // will hold its identifierStr, if any
 		long val_int;      // will hold its numValue, if any
-		double val_flt;    // same if floating type
+		double val_flt;    // will hold its fltVal, if any
 	};
 	enum types type; 
 } exprRecord;

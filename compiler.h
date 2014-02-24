@@ -10,22 +10,23 @@
 #include <ctype.h>
 #include <stdlib.h>       // commonly used lib functions, plus
                           // EXIT_SUCCESS and EXIT_FAILURE
+#include "error.h"
 #include <string.h>      // string-handling
 #include <sys/types.h>    // type definitions
 #include <unistd.h>       // prototypes for many sys calls
 #include <errno.h>        // declare variable errno
 #include <fcntl.h>        // open(), O_RDONLY
 
-#ifndef ERROR_H_
-#include "error.h"
-#endif
+
+#define min(m,n) ((m) < (n) ? (m) : (n))
+#define max(m,n) ((m) > (n) ? (m) : (n))
 
 #define MAX_ID_LEN 32
 #define MAX_LIT_LEN 20
 #define MAX_TYPES 10
 #define MAX_TOK_LEN 15
+#define MAGIC max(MAX_ID_LEN, MAX_LIT_LEN) // for numbers with no natural
+                                           // max size
 
-#define min(m,n) ((m) < (n) ? (m) : (n))
-#define max(m,n) ((m) > (n) ? (m) : (n))
 
 #endif
