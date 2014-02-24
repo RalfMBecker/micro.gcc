@@ -115,6 +115,12 @@ makeOpRec(token tok){
 	case tok_OP_MINUS:
 		res.op = MINUS;
 		break;
+	case tok_OP_MUL:
+		res.op = MUL;
+		break;
+	case tok_OP_DIV:
+		res.op = DIV;
+		break;
 	default: 
 		errExit(0, "invalid token in binary expression");
 		break;
@@ -123,7 +129,7 @@ makeOpRec(token tok){
 	return res;
 }
 
-// used in declarations
+// make an EXPR_ID from <name> already in Symbol Table
 exprRecord 
 makeIDRec(const char* name){
 
@@ -193,7 +199,6 @@ codegen_DECLARE(const exprRecord rec){
 	printf("%-8s %s, %s, %s\n", commandStr, rec.name, recNL->storage, typeStr);
 }
 
-
 static char*
 storageFromName(const char* name){
 
@@ -244,12 +249,13 @@ codegen_INFIX(const exprRecord res, const exprRecord LHS,
 	char opStr[MAGIC], strL[MAGIC], strR[MAGIC];
 	int tL, tR;
 
-	if ( (PLUS == op.op) ) 
-		strcpy(opStr, "Add:");
-	else if ( (MINUS == op.op) )
-		strcpy(opStr, "Sub:");
-	else
-		errExit(0, "illegal operation in infix expression");
+	switch(op.op){
+	case PLUS: strcpy(opStr, "Add:"); break;
+	case MINUS: strcpy(opStr, "Sub:"); break;
+	case MUL: strcpy(opStr, "Mul:"); break;
+	case DIV: strcpy(opStr, "Div:"); break;
+	default: errExit(0, "illegal operation in infix expression"); break;
+	}
 
 	// prepare what to print depending on expr type of LHS and RHS
 	if ( (EXPR_ID == (tL = LHS.kind)) )
@@ -261,7 +267,7 @@ codegen_INFIX(const exprRecord res, const exprRecord LHS,
 	else if ( (EXPR_FLT_LITERAL == tL) )
 		sprintf(strL, "%g", LHS.val_flt);
 	else
-		errExit(0, "invalid type (%d)", tL);
+		errExit(0, "invalid expression type (%d)", tL);
 
 	if ( (EXPR_ID == (tR = RHS.kind)) )
 		strcpy(strR, storageFromName(RHS.name));
@@ -272,7 +278,7 @@ codegen_INFIX(const exprRecord res, const exprRecord LHS,
 	else if ( (EXPR_FLT_LITERAL == tR) )
 		sprintf(strR, "%g", RHS.val_flt);
 	else
-		errExit(0, "invalid type (%d)", tR);
+		errExit(0, "invalid expression type (%d)", tR);
 
 	// for res, name == storage
 	printf("%-8s %s, %s, %s\n", opStr, res.name, strL, strR);		
@@ -410,6 +416,8 @@ generateInfix(exprRecord LHS, opRecord op, exprRecord RHS){
 		RHS = castRecord(RHS, LHS.type);
 		res.type = LHS.type;
 	}
+	else // equal case
+		res.type = LHS.type; 
 
 	res.kind = EXPR_TMP;
 	strcpy(res.name, assignNewTemp());

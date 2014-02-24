@@ -17,7 +17,7 @@
 typedef char stringID[MAX_ID_LEN+1];
 
 typedef struct operator{
-	enum oper { PLUS, MINUS } op;
+	enum oper { PLUS, MINUS, MUL, DIV } op;
 } opRecord;
 
 enum expr { EXPR_ID, EXPR_TMP,

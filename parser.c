@@ -45,6 +45,7 @@ match(int update, int fd, token tok, int readAhead){
 void Statement(int, int);
 exprRecord Declaration(int, int);
 exprRecord Expression(int, int);
+exprRecord Term(int, int);
 exprRecord Primary(int, int);
 void expressionList(int, int);
 void idList(int, int);
@@ -96,7 +97,6 @@ Statement(int fd, int readToken){
 		Declaration(fd, FLOAT);
 		break;
 
-		// UNDO CHANGE ++++++++ MAKE FAKE TMP 
 	case tok_ID: // note: ID found has already been entered into the ast
 		           // and ST with a call to makeIDRec when first encountered
 		if ( (NULL == (pNL = lookup(symbolTable, identifierStr)) ) )
@@ -182,26 +182,45 @@ Declaration(int fd, int type){
 	return LHS;
 }
 
-// expression -> primary [add_op primary]*
+// expression -> term [ [PLUS|MINUS] term]*
 //
-// Note:     fall through to get token
-// Note:     upon return, curTok points 1 ahead
 exprRecord
 Expression(int fd, int readToken){
 
 	exprRecord LHS, RHS;
 	opRecord opRec;
 
-	LHS = Primary(fd, readToken);
+	LHS = Term(fd, readToken);
+
 	while ( (curTok == tok_OP_PLUS)  || (curTok == tok_OP_MINUS) ){
 		opRec = makeOpRec(curTok);
-		RHS = Primary(fd, 1);
+		RHS = Term(fd, 1);
 		LHS = generateInfix(LHS, opRec, RHS);
 	}
 	// at this point, curTok points ahead (e.g., to a ';')
 
 	return LHS;
 }
+
+// term -> primary [ [MUL|DIV] primary ]*
+//
+exprRecord
+Term(int fd, int readToken){
+
+	exprRecord LHS, RHS;
+	opRecord opRec;
+
+	LHS = Primary(fd, readToken);
+	while ( (curTok == tok_OP_MUL)  || (curTok == tok_OP_DIV) ){
+		opRec = makeOpRec(curTok);
+		RHS = Primary(fd, 1); // treat 'div by 0' as a run-time error; 
+		LHS = generateInfix(LHS, opRec, RHS);
+	}
+	// at this point, curTok points ahead (e.g., to a ';')
+
+	return LHS;
+}
+
 
 // primary -> ( expression )
 //            -[INT_LITERAL|LONG_LITERAL|FLT_LITERAL] (TO DO)
