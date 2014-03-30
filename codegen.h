@@ -23,7 +23,7 @@ opRecord makeOpRec(token tok);
 exprRecord makeIDRec(const char* name);
 exprRecord makeLiteralRec(token tok);
 exprRecord generateInfix(const exprRecord LHS, 
-												 const opRecord op, const exprRecord RHS);
+			 const opRecord op, const exprRecord RHS);
 
 int checkCast(const exprRecord LHS, const exprRecord RHS);
 exprRecord castRecord(const exprRecord rec, int to);

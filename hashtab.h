@@ -27,16 +27,16 @@
 // would need to put 'enum types' definition in joint header file.
 // preferred to keep in ast.h for easy access
 struct nlist{
-  struct nlist* next;
-  char* name;
-  int type;
-	char* scope;
-	char* storage; 
+    struct nlist* next;
+    char* name;
+    int type;
+    char* scope;
+    char* storage; 
 };
 
 struct nlist* lookup(struct nlist**, const char*);
 struct nlist* install(struct nlist**, char* name, int type, 
-											char* scope, char* storage); 
+		      char* scope, char* storage);
 int undef(struct nlist**, const char*);
 void printHashTable(struct nlist**);
 

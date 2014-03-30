@@ -16,43 +16,43 @@ extern char identifierStr[];
 extern int numVal;
 
 int 
-main(int argc, char* argv[]){
+main(int argc, char* argv[])
+{
+    int fd, openFlags, endSeen;
+    endSeen = 0;
 
-  int fd, openFlags, endSeen;
-	endSeen = 0;
+    if (argc > 1){
+	openFlags = O_RDONLY;
+	fd = open(argv[1], openFlags);
+	if (fd == -1)
+	    errExit(1, " ...open()...");
+    }
+    else
+	fd = 0;
 
-	if (argc > 1){
-		openFlags = O_RDONLY;
-		fd = open(argv[1], openFlags);
-		if (fd == -1)
-			errExit(1, " ...open()...");
-	}
-	else
-		fd = 0;
+    createSymbolTable();
 
-	createSymbolTable();
+    codegen_TU(fd, (argc >1)?argv[1]:"");
 
-	codegen_TU(fd, (argc >1)?argv[1]:"");
+    // needs to be redone when doing scope
+    match(1, fd, tok_BEGIN, 0);
+    codegen_FUNCTION("begin");
 
-	// needs to be redone when doing scope
-	match(1, fd, tok_BEGIN, 0);
-	codegen_FUNCTION("begin");
+    while ( getNextToken(fd) != EOF){
+	if ( (curTok == tok_END) ) { endSeen = 1; break;}
+	if ( (curTok == tok_SEMICOLON) ) continue; // allow empty statement
+	// Note: consider letting regular descent handle it - it should
+	Statement(fd, 0);
+    }
 
-	while ( getNextToken(fd) != EOF){
-		if ( (curTok == tok_END) ) { endSeen = 1; break;}
-		if ( (curTok == tok_SEMICOLON) ) continue; // allow empty statement
-		     // Note: consider letting regular descent handle it - it should
-		Statement(fd, 0);
-	}
+    if (endSeen)  // make sure we saw END before EOF
+	codegen_END("begin");
+    else
+	errExit(0, "syntax error: program must end with token END");
 
-	if (endSeen)  // make sure we saw END before EOF
-		codegen_END("begin");
-	else
-		errExit(0, "syntax error: program must end with token END");
+    if (argc > 1)
+	if (close(fd) == -1)
+	    errExit(1, "...close()...");
 
-	if (argc > 1)
-		if (close(fd) == -1)      
-			errExit(1, "...close()...");
-
-  exit(EXIT_SUCCESS);
-} 
+    exit(EXIT_SUCCESS);
+}
